@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8"/>
+        <title>TT box v0.1.3</title>
+        <meta name="viewport" content="width=device-width, maximum-scale=1">
+        <style>
+            .iframe-container {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                border: none;
+            }
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: 'Arial', sans-serif;
+                background-color: #f0f2f5;
+                color: #333;
+            }
+
+            /* 悬浮按钮样式 */
+
+            .floating-btn-container {
+                position: fixed;
+                bottom: 100px;
+                left: 15px;
+                z-index: 999;
+            }
+
+            .floating-btn {
+                position: relative;
+                width: 40px;
+                height: 40px;
+                background: linear-gradient(135deg, #868686, #06266f);
+                border-radius: 50%;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                cursor: pointer;
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+                transition: all 0.3s ease;
+                z-index: 1;
+                opacity: 0.5; /* 设置整体透明度 */
+            }
+            .floating-btn.active {
+                position: relative;
+                width: 40px;
+                height: 40px;
+                background: linear-gradient(135deg, #1240ab, #06266f);
+                border-radius: 50%;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                cursor: pointer;
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+                z-index: 1;
+                opacity: 1; /* 设置整体透明度 */
+            }
+
+            .floating-btn:hover {
+                transform: scale(1.1);
+                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+            }
+
+            .floating-btn span {
+                font-size: 18px;
+                color: white;
+            }
+
+            .button-group {
+                opacity: 0.9; /* 设置整体透明度 */
+                position: absolute;
+                bottom: 70px;
+                left: 50%;
+                transform: translateX(-50%) translateY(20px);
+                display: flex;
+                flex-direction: column-reverse;
+                gap: 15px;
+                opacity: 0;
+                pointer-events: none;
+                transition: all 0.3s ease;
+                align-items: center;
+            }
+
+            .floating-btn-container.active .button-group {
+                opacity: 1;
+                pointer-events: all;
+                transform: translateX(-50%) translateY(0);
+            }
+
+            .sub-btn {
+                width: 50px;
+                height: 50px;
+                background: linear-gradient(135deg, #1240ab, #06266f);
+                border-radius: 50%;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                cursor: pointer;
+                color: white;
+                font-size: 20px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+                transition: all 0.2s ease;
+            }
+            .sub-btn:hover {
+                transform: scale(1.1);
+                background: linear-gradient(135deg, #1a52d1, #0a3aa8);
+            }
+
+            /* 全屏控制面板样式 - 优化移动端适配 */
+            .control-panel {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(135deg, #1240ab, #06266f);
+                z-index: 1001;
+                display: none;
+                transform: translateX(-100%);
+                transition: transform 0.4s ease-out;
+                overflow: hidden;
+                box-sizing: border-box;
+            }
+
+            .control-panel.active {
+                transform: translateX(0);
+            }
+
+            .panel-header {
+                text-align: center;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 12px 15px;
+                background: rgba(6, 38, 111, 0.8);
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                opacity: 0;
+                transition: opacity 0.4s ease-out 0.2s;
+                backdrop-filter: blur(5px);
+                position: sticky;
+                top: 0;
+                z-index: 20;
+                height: 60px; /* 固定高度 */
+            }
+
+            .control-panel.active .panel-header {
+                opacity: 1;
+            }
+
+            .panel-title {
+                font-size: 20px;
+                font-weight: bold;
+                color: #ffffff;
+                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+                margin: 0 auto;
+                flex: 1;
+            }
+
+            .panel-version {
+                display: none; /* 移除版本号 */
+            }
+
+            .close-btn {
+                width: 30px;
+                height: 30px;
+                background: #d40000;
+                color: white;
+                border-radius: 50%;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                cursor: pointer;
+                font-size: 18px;
+                line-height: 1;
+                transition: all 0.2s ease;
+                z-index: 10;
+                position: absolute;
+                right: 15px;
+            }
+
+            .close-btn:hover {
+                background: #ff2727;
+                transform: scale(1.1);
+            }
+
+            .panel-content {
+                color: #fff;
+                line-height: 1.5;
+                padding: 10px 15px;
+                opacity: 0;
+                transition: opacity 0.4s ease-out 0.2s;
+                height: calc(100% - 120px); /* 优化高度计算 */
+                overflow: hidden;
+                box-sizing: border-box;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .control-panel.active .panel-content {
+                opacity: 1;
+            }
+
+            /* 选项卡样式 - 优化移动端 */
+            .tab-buttons {
+                display: flex;
+                justify-content: center; /* 按钮居中 */
+                gap: 8px;
+                padding: 10px 15px;
+                background: rgba(6, 38, 111, 0.6);
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                position: sticky;
+                top: 60px; /* 匹配header高度 */
+                z-index: 10;
+                overflow-x: auto;
+                white-space: nowrap;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none; /* 隐藏滚动条 */
+            }
+
+            .tab-buttons::-webkit-scrollbar {
+                display: none; /* 隐藏滚动条 */
+            }
+
+            .tab-btn {
+                padding: 8px 16px;
+                border: none;
+                border-radius: 5px;
+                background: #1240ab;
+                color: white;
+                font-weight: bold;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+                font-size: 14px;
+                flex-shrink: 0;
+                min-width: 80px; /* 设置最小宽度 */
+                text-align: center;
+            }
+
+            .tab-btn:hover {
+                background: #1a52d1;
+            }
+
+            .tab-btn.active {
+                background: #4CAF50;
+                transform: translateY(-2px);
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            }
+
+            /* 选项卡内容区域 - 优化移动端 */
+            .tab-content {
+                display: none;
+                padding: 15px;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 8px;
+                margin: 10px;
+                max-height: 100%; /* 优化高度计算 */
+                overflow-y: auto;
+                box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2);
+                margin-bottom: 15px;
+                -webkit-overflow-scrolling: touch;
+                box-sizing: border-box;
+            }
+
+            .tab-content.active {
+                display: block;
+                animation: fadeIn 0.5s ease;
+            }
+
+            /* 进度条样式 */
+            .progress-container {
+                width: 100%;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 5px;
+                margin: 10px 0;
+                height: 6px;
+            }
+
+            .progress-bar {
+                height: 100%;
+                border-radius: 5px;
+                background: linear-gradient(90deg, #4CAF50, #8BC34A);
+                width: 0%;
+                transition: width 0.3s ease;
+            }
+
+            /* 自定义滚动条 */
+            .tab-content::-webkit-scrollbar {
+                width: 6px;
+            }
+
+            .tab-content::-webkit-scrollbar-track {
+                background: rgba(0, 0, 0, 0.1);
+                border-radius: 4px;
+            }
+
+            .tab-content::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.3);
+                border-radius: 4px;
+            }
+
+            .tab-content::-webkit-scrollbar-thumb:hover {
+                background: rgba(255, 255, 255, 0.5);
+            }
+
+            /* 内容卡片样式 */
+            .card {
+                background: rgba(255, 255, 255, 0.15);
+                border-radius: 8px;
+                padding: 12px;
+                margin-bottom: 12px;
+                backdrop-filter: blur(5px);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+
+            .card h3 {
+                margin-top: 0;
+                color: #fff;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+                padding-bottom: 8px;
+                font-size: 16px;
+            }
+
+            .card p {
+                color: rgba(255, 255, 255, 0.8);
+                font-size: 14px;
+                margin: 8px 0;
+            }
+
+            /* 覆盖层样式 */
+            .overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 1000;
+                display: none;
+                backdrop-filter: blur(3px);
+            }
+
+            /* 移动端特定优化 */
+            @media (max-width: 768px) {
+                .panel-header {
+                    padding: 10px 15px;
+                    height: 50px;
+                }
+                
+                .panel-title {
+                    font-size: 18px;
+                }
+                
+                .close-btn {
+                    width: 26px;
+                    height: 26px;
+                    font-size: 16px;
+                }
+                
+                .tab-buttons {
+                    top: 50px;
+                    padding: 8px 10px;
+                }
+                
+                .tab-btn {
+                    padding: 6px 12px;
+                    font-size: 13px;
+                    min-width: 70px;
+                }
+                
+                .tab-content {
+                    padding: 10px;
+                    margin: 8px;
+                    max-height: calc(100vh - 140px);
+                    margin-bottom: 10px;
+                }
+                
+                .panel-content {
+                    padding: 8px 10px;
+                    height: calc(100% - 110px);
+                }
+                
+                .card {
+                    padding: 10px;
+                }
+            }
+        </style>
+    </head>
+<body>
+    <div class="floating-btn-container" id="floatingBtnContainer">
+        <div class="button-group-bg"></div>
+        <div class="floating-btn" id="floatingBtn">
+            <span id="btnSymbol">🔒</span>
+        </div>
+        <div class="button-group">
+            <div class="sub-btn" id="subBtn1">⚙️</div>
+            <div class="sub-btn" id="subBtn2" onclick="switchToFirstIframe()">🏠</div>
+            <div class="sub-btn" id="subBtn3">▶️</div>
+            <div class="sub-btn" id="subBtn4" onclick="switchToNextIframe()">⚡</div>
+            <div class="sub-btn" id="subBtn5" onclick="donate()">💰</div>
+            <div class="sub-btn" id="subBtn6">🔧</div>
+        </div>
+    </div>
+
+    <div class="overlay" id="overlay"></div>
+
+    <div class="control-panel" id="controlPanel">
+        <div class="panel-header">
+            <div class="panel-title">🕹️ TT box</div>
+            <div class="panel-version">v0.1.3</div>
+            <div class="close-btn" id="closeBtn">×</div>
+        </div>
+        
+        <div class="tab-buttons">
+            <button class="tab-btn active" data-tab="tab1">界面</button>
+            <button class="tab-btn" data-tab="tab2">控制</button>
+            <button class="tab-btn" data-tab="tab3">设置</button>
+            <button class="tab-btn" data-tab="tab4">关于</button>
+        </div>
+        
+        <div class="panel-content">
+            <div id="tab1" class="tab-content active">
+                <button onclick="createCustomIframe('Page '+iframeManager.currentId)">
+                    创建新页面
+                    </button><hr>
+                <div class="card" id="iframe_insert">
+                    <h3>页面列表</h3>
+                    <!-- 列表将动态生成在这里 -->
+                </div>   
+            </div>
+            
+            <div id="tab2" class="tab-content">
+                <div class="card">
+                    <h3>进攻速度</h3>
+                    <p>每轮进攻人机数量</p>
+                    <input value="3" type="number" id="attack_number_input"></input>
+                </div>
+                <div class="card">
+                    <h3>进攻比例</h3>
+                    <p>每轮进攻人机超过人机最高比例</p>
+                    <input value="2" type="number" id="attack_percentage_input"></input>
+                </div>
+                <div class="card">
+                    <h3>捐献比例</h3>
+                    <p>每次捐献给主号的比例</p>
+                    <input value="0.2" type="number" id="donate_percentage_input"></input>
+                </div>
+            </div>
+            
+            <div id="tab3" class="tab-content">
+                <div class="card">
+                    <h3>子页面备用路径</h3>
+                    <input value="opentt.html" id="iframe_url_input"></input>
+                </div>
+                <div class="card">
+                    <h3>游戏模式</h3>
+                    <select>
+                        <option>后援模式</option>
+                        <option>TT模式</option>
+                        <option>全自动竞赛</option>
+                        <option>全自动僵尸</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div id="tab4" class="tab-content">
+                <div class="card">
+                    <h3>🕹️ TT box</h3>
+                    <p>version 0.1.3</p>
+                </div>
+                <div class="card">
+                    <h3>📝 快捷键</h3>
+                    <p>⚙️ - 打开控制面板</p>
+                    <p>🏠 - 回到主页（默认id最小值）</p>
+                    <p>▶️ - 自动开局</p>
+                    <p>⚡ - 切换标签页</p>
+                    <p>💰 - 快速增援</p>
+                    <p>🔧 - (暂未开放)</p>
+                    <p>
+                    <p>Ctrl+Q - 打开/关闭控制面板</p>
+                </div>
+                <div class="card">
+                    <h3>操作说明</h3>
+                    <p>初次使用请将所有账号再主号页面创建完毕</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        //iframe 管理
+        class IframeManager {
+  constructor() {
+    this.currentId = 0;
+    this.deletedIds = [];
+    this.iframeMap = new Map();
+    this.iframeListElement = document.getElementById('iframe_insert');
+    this.renderList();
+  }
+
+  // 创建iframe函数
+  createIframe(name = 'New Page') {
+    const id = this.getNextId();
+    const iframe = document.createElement('iframe');
+    
+    iframe.className = 'iframe-container';
+    iframe.src = document.getElementById("iframe_url_input").value;
+    iframe.frameBorder = '0';
+    iframe.id = `iframe-${id}`;
+    iframe.style.zIndex = '0';
+    iframe.style.position = 'fixed';
+    
+    document.body.appendChild(iframe);
+    this.iframeMap.set(id, {
+      element: iframe,
+      name: name,
+      zIndex: 0,
+      editing: false
+    });
+    
+    setTimeout(() => {
+      if (iframe.contentWindow) {
+        iframe.contentWindow.postMessage(`newid${id}`, '*');
+      }
+    }, 500);
+    
+    this.renderList();
+    return id;
+  }
+
+  // 删除iframe函数
+  deleteIframe(id) {
+    const entry = this.iframeMap.get(id);
+    
+    if (entry) {
+      entry.element.remove();
+      this.iframeMap.delete(id);
+      this.deletedIds.push(id);
+      this.deletedIds.sort((a, b) => a - b);
+      this.renderList();
+      return true;
+    }
+    
+    return false;
+  }
+
+  // 发送消息到指定iframe
+  sendMessage(id, message) {
+    const entry = this.iframeMap.get(id);
+    
+    if (entry && entry.element.contentWindow) {
+      entry.element.contentWindow.postMessage(message, '*');
+      return true;
+    }
+    
+    return false;
+  }
+
+  // 打开iframe（提升z-index）
+  openIframe(id) {
+    controlPanel.classList.remove('active');
+    setTimeout(() => {
+        controlPanel.style.display = 'none';
+        overlay.style.display = 'none';
+    }, 400);
+    this.iframeMap.forEach((entry, key) => {
+      entry.zIndex = key === id ? 2 : 0;
+      entry.element.style.zIndex = entry.zIndex;
+    });
+    this.renderList();
+  }
+
+  // 切换重命名模式
+  toggleRename(id) {
+    
+    const entry = this.iframeMap.get(id);
+    if (!entry) return;
+    
+    if (entry.editing) {
+      // 保存新名称
+      const input = document.getElementById(`name-input-${id}`);
+      if (input) {
+        entry.name = input.value.trim() || 'Unnamed';
+      }
+    }
+    
+    entry.editing = !entry.editing;
+    this.renderList();
+  }
+
+  // 获取下一个可用ID
+  getNextId() {
+    if (this.deletedIds.length > 0) {
+      return this.deletedIds.shift();
+    }
+    
+    return this.currentId++;
+  }
+
+  // 渲染iframe列表
+  renderList() {
+    // 清空现有列表，保留标题行
+    while (this.iframeListElement.children.length > 1) {
+      this.iframeListElement.removeChild(this.iframeListElement.lastChild);
+    }
+    
+    // 按ID排序后添加行
+    Array.from(this.iframeMap.entries())
+      .sort((a, b) => a[0] - b[0])
+      .forEach(([id, entry]) => {
+        const row = document.createElement('div');
+        row.style.display = 'flex';
+        row.style.alignItems = 'center';
+        row.style.padding = '8px 0';
+        row.style.borderBottom = '1px solid #eee';
+        
+        const idSpan = document.createElement('span');
+        idSpan.textContent = `id:${id}`;
+        idSpan.style.width = '80px';
+        idSpan.style.fontWeight = entry.zIndex === 2 ? 'bold' : 'normal';
+        
+        let nameElement;
+        if (entry.editing) {
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.id = `name-input-${id}`;
+          input.value = entry.name;
+          input.style.width = '110px';
+          input.style.marginLeft = '10px';
+          input.style.padding = '2px';
+          nameElement = input;
+        } else {
+          const nameSpan = document.createElement('span');
+          nameSpan.textContent = entry.name;
+          nameSpan.style.width = '120px';
+          nameSpan.style.marginLeft = '10px';
+          nameElement = nameSpan;
+        }
+        
+        const openBtn = document.createElement('button');
+        openBtn.textContent = '打开';
+        openBtn.style.marginLeft = '10px';
+        openBtn.style.padding = '4px 8px';
+        openBtn.style.backgroundColor = '#4CAF50';
+        openBtn.style.color = 'white';
+        openBtn.style.border = 'none';
+        openBtn.style.borderRadius = '4px';
+        openBtn.style.cursor = 'pointer';
+        openBtn.onclick = () => this.openIframe(id);
+        
+        const renameBtn = document.createElement('button');
+        renameBtn.textContent = entry.editing ? '保存' : '改名';
+        renameBtn.style.marginLeft = '10px';
+        renameBtn.style.padding = '4px 8px';
+        renameBtn.style.backgroundColor = '#2196F3';
+        renameBtn.style.color = 'white';
+        renameBtn.style.border = 'none';
+        renameBtn.style.borderRadius = '4px';
+        renameBtn.style.cursor = 'pointer';
+        renameBtn.onclick = () => this.toggleRename(id);
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = '删除';
+        deleteBtn.style.marginLeft = '10px';
+        deleteBtn.style.padding = '4px 8px';
+        deleteBtn.style.backgroundColor = '#f44336';
+        deleteBtn.style.color = 'white';
+        deleteBtn.style.border = 'none';
+        deleteBtn.style.borderRadius = '4px';
+        deleteBtn.style.cursor = 'pointer';
+        deleteBtn.onclick = () => this.deleteIframe(id);
+        
+        row.appendChild(idSpan);
+        row.appendChild(nameElement);
+        row.appendChild(openBtn);
+        row.appendChild(renameBtn);
+        row.appendChild(deleteBtn);
+        
+        this.iframeListElement.appendChild(row);
+      });
+  }
+}
+
+// 创建单例实例
+const iframeManager = new IframeManager();
+
+// 暴露API
+window.createCustomIframe = (name) => iframeManager.createIframe(name);
+window.deleteCustomIframe = (id) => iframeManager.deleteIframe(id);
+window.sendMessageToIframe = (id, message) => iframeManager.sendMessage(id, message);
+window.openCustomIframe = (id) => iframeManager.openIframe(id);
+window.toggleRenameIframe = (id) => iframeManager.toggleRename(id);
+
+// 切换到下一个iframe并显示信息
+function switchToNextIframe() {
+  const entries = Array.from(iframeManager.iframeMap.entries());
+  if (entries.length === 0) return;
+  
+  // 找到当前激活的iframe
+  let currentIndex = -1;
+  const activeId = entries.find(([id, entry]) => entry.zIndex === 2)?.[0];
+  
+  if (activeId !== undefined) {
+    currentIndex = entries.findIndex(([id]) => id === activeId);
+  }
+  
+  // 计算下一个iframe的索引
+  const nextIndex = (currentIndex + 1) % entries.length;
+  const [nextId, nextEntry] = entries[nextIndex];
+  
+  // 激活下一个iframe
+  iframeManager.openIframe(nextId);
+  
+  // 滚动到顶部
+  window.scrollTo({
+    top: 0,
+    behavior: 'smooth'
+  });
+  
+  // 显示弹窗
+  showInfoPopup(`id:${nextId}`, nextEntry.name);
+}
+
+// 切换到ID最小的iframe
+function switchToFirstIframe() {
+  const entries = Array.from(iframeManager.iframeMap.entries());
+  if (entries.length === 0) return;
+  
+  // 按ID排序
+  entries.sort((a, b) => a[0] - b[0]);
+  const [firstId, firstEntry] = entries[0];
+  
+  // 激活第一个iframe
+  iframeManager.openIframe(firstId);
+  
+  // 显示弹窗
+  showInfoPopup(`id:${firstId}`, firstEntry.name);
+}
+
+// 显示信息弹窗（辅助函数）
+function showInfoPopup(idText, nameText) {
+  // 创建弹窗元素
+  const popup = document.createElement('div');
+  popup.style.position = 'fixed';
+  popup.style.top = '50%';
+  popup.style.left = '50%';
+  popup.style.transform = 'translate(-50%, -50%)';
+  popup.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+  popup.style.color = 'white';
+  popup.style.padding = '20px';
+  popup.style.borderRadius = '10px';
+  popup.style.fontSize = '18px';
+  popup.style.textAlign = 'center';
+  popup.style.zIndex = '1000';
+  popup.style.opacity = '0';
+  popup.style.transition = 'opacity 0.3s ease-in-out';
+  popup.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
+  
+  // 设置内容（名称在上，ID在下）
+  popup.innerHTML = `
+    <div style="margin-bottom: 8px; font-weight: bold;">${nameText}</div>
+    <div>${idText}</div>
+  `;
+  
+  // 添加到页面
+  document.body.appendChild(popup);
+  
+  // 显示弹窗
+  setTimeout(() => {
+    popup.style.opacity = '1';
+  }, 10);
+  
+  // 自动隐藏
+  setTimeout(() => {
+    popup.style.opacity = '0';
+    setTimeout(() => {
+      document.body.removeChild(popup);
+    }, 300);
+  }, 500);
+}
+        
+        // 悬浮按钮控制
+        const floatingBtn = document.getElementById('floatingBtn');
+        const floatingBtnContainer = document.getElementById('floatingBtnContainer');
+        const btnSymbol = document.getElementById('btnSymbol');
+        const controlPanel = document.getElementById('controlPanel');
+        const overlay = document.getElementById('overlay');
+        const closeBtn = document.getElementById('closeBtn');
+
+        floatingBtn.addEventListener('click', () => {
+            floatingBtnContainer.classList.toggle('active');
+            floatingBtn.classList.toggle('active');
+            btnSymbol.textContent = floatingBtnContainer.classList.contains('active') ? '🔓' : '🔒';
+        });
+
+        // 子按钮1点击事件
+        document.getElementById('subBtn1').addEventListener('click', () => {
+            controlPanel.style.display = 'block';
+            overlay.style.display = 'block';
+            setTimeout(() => {
+                controlPanel.classList.add('active');
+            }, 10);
+            //floatingBtnContainer.classList.remove('active');
+            //btnSymbol.textContent = '🔒';
+        });
+
+        // 更新按钮状态和样式
+        function updateButtonState(isRunning) {
+        if (isRunning) {
+            controlBtn.textContent = '⏸️';
+            controlBtn.classList.add('bg-red-500');
+            controlBtn.classList.remove('bg-blue-500');
+        } else {
+            controlBtn.textContent = '▶️';
+            controlBtn.classList.add('bg-blue-500');
+            controlBtn.classList.remove('bg-red-500');
+        }
+        }
+
+        // 关闭控制面板
+        closeBtn.addEventListener('click', closePanel);
+        overlay.addEventListener('click', closePanel);
+
+        function closePanel() {
+            controlPanel.classList.remove('active');
+            setTimeout(() => {
+                controlPanel.style.display = 'none';
+                overlay.style.display = 'none';
+            }, 400);
+
+        }
+
+        // 选项卡切换功能
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                // 移除所有按钮和内容的active类
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                tabContents.forEach(content => content.classList.remove('active'));
+                
+                // 为当前按钮和对应内容添加active类
+                button.classList.add('active');
+                const tabId = button.getAttribute('data-tab');
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+        // 获取当前所有在线iframe的ID列表（按ID升序排列）
+function getActiveIframeIds() {
+  const activeIds = Array.from(iframeManager.iframeMap.keys())
+    .sort((a, b) => a - b);
+    
+  return activeIds;
+}
+    </script>
+    <script>
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'q') {
+                floatingBtn.classList.toggle('active');
+                if (controlPanel.style.display === 'block') {
+                    controlPanel.classList.remove('active');
+                    setTimeout(() => {
+                        controlPanel.style.display = 'none';
+                        overlay.style.display = 'none';
+                    }, 400);
+                } else {
+                    setTimeout(() => {
+                    controlPanel.classList.add('active');
+                }, 10);
+                    controlPanel.style.display = 'block';
+                    overlay.style.display = 'block';
+                }
+            }
+        });
+    </script>
+    <!-- UI <=> SCRIPT LINE -->
+    <script>
+        function writeStorage(key, value) {
+            try {
+                const serializedValue = JSON.stringify(value);
+                localStorage.setItem(key, serializedValue);
+                return true;
+            } catch (error) {
+                console.error('写入 localStorage 失败:', error);
+                return false;
+            }
+            }
+        function readStorage(key, defaultValue = null) {
+            try {
+                const serializedValue = localStorage.getItem(key);
+                if (serializedValue === null) {
+                return defaultValue;
+                }
+                return JSON.parse(serializedValue);
+            } catch (error) {
+                console.error('读取 localStorage 失败:', error);
+                return defaultValue;
+            }
+        }  
+        if (readStorage("pageUrl")) {
+            document.getElementById("iframe_url_input").value = readStorage("pageUrl")
+        }
+        var urlInput = document.getElementById("iframe_url_input")
+        urlInput.addEventListener('input', function(event) {
+            writeStorage("pageUrl",urlInput.value)
+        })
+        if (readStorage("attack_number_input")) {
+            document.getElementById("attack_number_input").value = readStorage("attack_number_input")
+        }
+        var attack_number_input = document.getElementById("attack_number_input")
+        attack_number_input.addEventListener('input', function(event) {
+            writeStorage("attack_number_input",attack_number_input.value)
+        })
+        window.addEventListener('message', function(event) {
+            if (event.data["type"] === "id") {
+                all_id[event.data["data"][0]] = event.data["data"][1]
+                console.log('收到子页面消息:', event.data);
+            }
+            if (event.data["type"] === "tick") {
+                currentTick = event.data["data"]
+                //console.log('收到子页面tick:', event.data);
+            }
+            if (event.data["type"] === "empty") {
+                is_empty[event.data["id"]] = false
+                console.log("id:",event.data["id"]," ==> empty")
+            }
+            
+        });
+        let tick = 0;
+        let currentTick = 0;
+        let attackTimer = null;
+        var is_empty = {}
+        const ms = 1000
+        const one_tick = 5.6
+        var attacking_logic = [
+            [(0 *one_tick +one_tick*0.652)*ms, 0, 28.8],
+            [(1 *one_tick +one_tick*0.6625)*ms, 0, 35.23],
+            [(2 *one_tick +one_tick*0.659)*ms, 0, 32.7],
+            [(3 *one_tick +one_tick*0.5)*ms, 0, 28],
+            [(3 *one_tick +one_tick*0.75)*ms, 0, 37],
+            [(3 *one_tick +one_tick*0.9)*ms, 0, 37],
+            [(4 *one_tick +one_tick*0.6)*ms, 0, 28],
+            [(4 *one_tick +one_tick*0.75)*ms, 0, 32],
+            [(4 *one_tick +one_tick*0.9)*ms, 0, 32],
+            [(5 *one_tick +one_tick*0.4)*ms, 0, 30],
+            [(5 *one_tick +one_tick*0.6)*ms, 0, 30],
+            [(5 *one_tick +one_tick*0.75)*ms, 0, 30],
+            [(5 *one_tick +one_tick*0.9)*ms, 0, 30],
+            [(6 *one_tick +one_tick*0.7)*ms, 0, 30],
+            [(7 *one_tick +one_tick*0.7)*ms, 0, 30],
+        ];
+        for (let i = 3; i < 40; i++) {
+            attacking_logic.push([((i) *one_tick +one_tick*0.7)*ms, 1, 5])
+        }
+        for (let i = 40; i < 200; i++) {
+            attacking_logic.push([((i) *one_tick +one_tick*0.7)*ms, 1, 2])
+        }
+        console.log(attacking_logic)
+        const executedAttacks = new Set();
+        const controlBtn = document.getElementById('subBtn3');
+
+        // 初始化按钮状态
+        updateButtonState(false);
+        controlBtn.addEventListener('click', toggleAttackTimer);
+
+        function toggleAttackTimer() {if (attackTimer) {stopAttackTimer();} else {startAttackTimer();}}
+        var all_id = {};
+        var id_list = getActiveIframeIds();
+        function startAttackTimer() {
+            all_id = {};
+            id_list = getActiveIframeIds();
+            
+            for (let index = 0; index < id_list.length; index++) {
+                sendMessageToIframe(id_list[index],{id:id_list[index],type:"search"})
+                is_empty[id_list[index]] = true
+            }
+            setTimeout(() => {
+                console.log(all_id)
+            }, 1000);
+            
+            if (attackTimer) clearInterval(attackTimer);
+            
+            tick = 0;
+            executedAttacks.clear();
+            setTimeout(() => {
+                attackTimer = setInterval(() => {
+                get_time();
+                //console.log(currentTick)
+                if (currentTick !== tick) {
+                    tick = currentTick;
+                    
+                    for (let i = 0; i < attacking_logic.length; i++) {
+                        const [triggerTick, type, percentage] = attacking_logic[i];
+                        if (tick >= triggerTick && !executedAttacks.has(i)) {
+                            for (let index = 0; index < id_list.length; index++) {
+                                const iframeid = id_list[index];
+                                
+                                if (type === 0 && is_empty[iframeid]) {
+                                    attack(iframeid,percentage*10,512,"attack_empty")
+                                    console.log("attack"+i+" - "+percentage+"%")
+                                }
+                                if (type === 1 && is_empty[iframeid] === false) {
+                                    const number = parseInt(document.getElementById("attack_number_input").value)
+                                    attack(iframeid,percentage*10,-1,"attack_robot",number)
+                                    console.log("attack_robot?",number)
+                                }
+                                //attack(iframeid,percentage*10,512,"attack_empty")
+                                // if (hD(aD.eR) === false && is_empty) {
+                                //     is_empty == false
+                                //     console.log("stop")
+                                // }
+                                // if (type === 1 && is_empty===false) {
+                                //     attack_robot(percentage*10);
+                                // }
+                                // if (type === 2) {
+                                    
+                                // }
+                            }
+                            executedAttacks.add(i);
+                        }
+                    }
+                }
+            }, 20);
+            }, 100);
+            
+            
+            updateButtonState(true);
+        }
+
+        function stopAttackTimer() {
+            var all_id = {};
+            if (attackTimer) {
+                clearInterval(attackTimer);
+                attackTimer = null;
+                console.log('攻击计时器已停止');
+                updateButtonState(false);
+            }
+        }
+
+        function get_time() {
+            sendMessageToIframe(id_list[0],{type:"tick"})
+        }
+        function attack(iframeid,percentage,id,type,number=1) {
+            sendMessageToIframe(iframeid,{"type":"attack","iframeid":iframeid,"data":{"type":type,"percentage":percentage,"id":id,"number":number}})
+        }
+        function donate() {
+            const percentage = document.getElementById("donate_percentage_input").value
+            percentgae = parseFloat(percentage)
+            for (let index = 1; index < id_list.length; index++) {
+                sendMessageToIframe(id_list[index],{"type":"donate","data":{"percentage":percentage,"id":all_id[id_list[0]]}})
+            }
+        }
+    </script>
+    
+    </body>
+</html>
